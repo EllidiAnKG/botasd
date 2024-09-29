@@ -32,7 +32,7 @@ class Program
         using var cts = new CancellationTokenSource();
         client.StartReceiving(UpdateHandler, ErrorHandler, receiverOptions, cts.Token);
 
-        // Инициализация базы данных
+    
         InitializeDatabase();
         LoadRafflesIntoKeyboard();
 
@@ -101,9 +101,7 @@ class Program
         }
         catch (Exception ex)
         {
-            // Handle exceptions
             Console.WriteLine($"Error initializing database: {ex.Message}");
-            // Consider logging the error for debugging
         }
     }
     private static void ExecuteCommand(SQLiteConnection connection, string commandText)
@@ -119,20 +117,16 @@ class Program
     {
         using var connection = new SQLiteConnection($"Data Source={dbPath}");
         connection.Open();
-
-        // Получаем ID розыгрыша
         var raffleId = GetRaffleId(connection, raffleName);
 
         // Проверяем, добавлен ли уже участник
         var isParticipant = IsParticipant(connection, raffleId, userId);
-
         if (isParticipant)
         {
             await client.SendTextMessageAsync(userId, $"Вы уже участвуете в {raffleName}.");
         }
         else
         {
-            // Добавляем участника
             AddParticipant(connection, raffleId, userId);
             await client.SendTextMessageAsync(userId, $"Вы успешно добавлены в розыгрыш {raffleName}!");
         }
@@ -153,7 +147,6 @@ class Program
             return (int)result;
         }
     }
-
     // Проверка, является ли пользователь участником
     private static bool IsParticipant(SQLiteConnection connection, int raffleId, long userId)
     {
@@ -193,15 +186,12 @@ class Program
     {
         using var connection = new SQLiteConnection($"Data Source={dbPath}");
         connection.Open();
-
-        // Проверка, существует ли розыгрыш
         var raffleId = GetRaffleId(connection, raffleName);
         if (raffleId != -1)
         {
             await client.SendTextMessageAsync(adminIds[0], $"Розыгрыш {raffleName} уже существует.");
             return;
         }
-        // Добавление розыгрыша в базу данных
         ExecuteCommand(connection, $"INSERT INTO raffles (name) VALUES ('{raffleName}')");
 
         // Обновление клавиатуры
@@ -214,17 +204,12 @@ class Program
     {
         using var connection = new SQLiteConnection($"Data Source={dbPath}");
         connection.Open();
-
-        // Use parameterized query
         using var command = new SQLiteCommand("DELETE FROM raffles WHERE name = @raffleName", connection);
         command.Parameters.AddWithValue("@raffleName", raffleName);
-
-        // Execute the query
         int rowsAffected = command.ExecuteNonQuery();
 
         if (rowsAffected > 0)
         {
-            // Update the keyboard
             LoadRafflesIntoKeyboard();
             await client.SendTextMessageAsync(adminIds[0], $"Розыгрыш {raffleName} остановлен!");
         }
