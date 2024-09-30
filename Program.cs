@@ -1,4 +1,4 @@
-﻿
+
 using System.Data.SQLite;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
@@ -15,7 +15,7 @@ class Program
     private static InlineKeyboardMarkup? adminKeyboard;
     private static InlineKeyboardMarkup? raffle;
     private static List<long> adminIds = new List<long> { 932635238 };
-    private static string dbPath = "raffle.db"; 
+    private static string dbPath = "raffle.db";
 
     public static void Main(string[] args)
     {
@@ -32,7 +32,7 @@ class Program
         using var cts = new CancellationTokenSource();
         client.StartReceiving(UpdateHandler, ErrorHandler, receiverOptions, cts.Token);
 
-    
+
         InitializeDatabase();
         LoadRafflesIntoKeyboard();
 
@@ -140,7 +140,7 @@ class Program
         object result = command.ExecuteScalar();
         if (result == null)
         {
-            return -1; 
+            return -1;
         }
         else
         {
@@ -225,7 +225,7 @@ class Program
         Console.WriteLine(exception.Message);
         return Task.CompletedTask;
     }
- 
+
 
     // Обработка текстовых сообщений
     private static async Task HandleMessage(ITelegramBotClient botClient, Message message)
@@ -257,12 +257,10 @@ class Program
     }
 
 
-    private static async Task CreateRaffle(ITelegramBotClient client, Message message, SQLiteConnection connection)
+    private static async Task CreateRaffle(ITelegramBotClient client, Message message, SQLiteConnection connection, string raffleName)
     {
-        // Получение данных от пользователя (название, описание, картинка)
-        await client.SendTextMessageAsync(message.Chat.Id, "Введите название розыгрыша:");
-        var raffleName = await WaitForMessage(client, message.Chat.Id);
-
+        connection.Open();
+        // Получение данных от пользователя (описание, картинка)
         await client.SendTextMessageAsync(message.Chat.Id, "Введите описание розыгрыша:");
         var raffleDescription = await WaitForMessage(client, message.Chat.Id);
 
@@ -277,9 +275,8 @@ class Program
             command.Parameters.AddWithValue("@image", raffleImage);
             command.ExecuteNonQuery();
         }
-
-        // Вывод сообщения о создании розыгрыша
         await client.SendTextMessageAsync(message.Chat.Id, "Розыгрыш успешно создан!");
+        LoadRafflesIntoKeyboard();
     }
     private static async Task EditRaffle(ITelegramBotClient client, Message message, SQLiteConnection connection)
     {
@@ -327,7 +324,7 @@ class Program
     // Метод для ожидания сообщения от пользователя
     private static async Task<string> WaitForMessage(ITelegramBotClient client, long chatId)
     {
-        var message = await client.SendTextMessageAsync(chatId,"");
+        var message = await client.SendTextMessageAsync(chatId, "ss");
         return message.Text;
     }
 
@@ -369,7 +366,7 @@ class Program
                     await client.SendTextMessageAsync(message.Chat.Id, "Панель управления:", replyMarkup: adminKeyboard);
                 }
             }
-           
+
         }
 
 
@@ -390,23 +387,18 @@ class Program
                     await AddParticipantToRaffle("Розыгрыш 1", user.Id);
                     break;
                 case "createRaffle":
-                    // Запрашиваем название нового розыгрыша
-                    await CreateRaffle(client, callbackQuery.Message, GetConnection());
-
+                    await client.SendTextMessageAsync(callbackQuery.From.Id, "Введите название нового розыгрыша:");
+                    var raffleName = await WaitForMessage(client, callbackQuery.From.Id);
+                    await CreateRaffle(client, callbackQuery.Message, GetConnection(), raffleName);
                     break;
 
                 case "editRaffle":
                     // Запрашиваем ID розыгрыша для редактирования
                     await client.SendTextMessageAsync(callbackQuery.From.Id, "Введите ID розыгрыша для редактирования:");
-            
+
                     break;
 
             }
         }
     }
-
-
-    
-
-
 }
